@@ -1,0 +1,52 @@
+name: Sync from fork
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Save local workflows
+        run: |
+          mkdir -p /tmp/workflows
+          cp -R .github/workflows /tmp/workflows || true
+
+      - name: Add upstream
+        run: |
+          git remote add source https://github.com/obukhovaa/opencode.git || true
+
+      - name: Mirror upstream
+        run: |
+          git fetch source
+          git reset --hard source/main
+
+      - name: Restore local workflows
+        run: |
+          rm -rf .github/workflows
+          mkdir -p .github
+          cp -R /tmp/workflows/workflows .github/ || true
+
+      - name: Commit restored workflows
+        run: |
+          git add .github/workflows
+          git commit -m "Restore local workflows" || true
+
+      - name: Push
+        run: |
+          git push --force origin main
